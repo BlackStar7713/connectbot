@@ -225,7 +225,7 @@ app-instrumented.apk : app-original.apk
 
 app-androidTest.apk :
 	@export ABC_CONFIG=$(ABC_CFG) && \
-	$(GW) assembleOssAndroidTest </dev/null && \
+	$(GW) assembleOssDebugAndroidTest </dev/null && \
 	mv app/build/outputs/apk/androidTest/oss/debug/app-oss-debug-androidTest.apk app-androidTest-unsigned.apk && \
 	$(ABC) sign-apk app-androidTest-unsigned.apk && \
 	mv -v app-androidTest-unsigned.apk app-androidTest.apk
@@ -233,7 +233,7 @@ app-androidTest.apk :
 ## the assembleAndroidTest task also builds the app if it starts from a clean build
 app-original-for-coverage.apk app-androidTest-for-coverage.apk:
 	@export ABC_CONFIG=$(ABC_CFG) && \
-	$(GW) -PjacocoEnabled=true clean assembleOssDebug assembleOssAndroidTest </dev/null && \
+	$(GW) -PjacocoEnabled=true clean assembleOssDebug assembleOssDebugAndroidTest </dev/null && \
 	mv app/build/outputs/apk/oss/debug/app-oss-debug.apk app-original-for-coverage.apk  && \
 	mv app/build/outputs/apk/androidTest/oss/debug/app-oss-debug-androidTest.apk app-androidTest-for-coverage.apk
 
