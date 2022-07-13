@@ -1,0 +1,16 @@
+[MakeConfiguration]
+make_app_package = org.connectbot
+make_app_debug_package = org.connectbot.debug
+make_original_apk_path = app/build/outputs/apk/oss/debug/app-oss-debug.apk
+make_android_test_apk_path = app/build/outputs/apk/androidTest/oss/debug/app-oss-debug-androidTest.apk
+make_assemble_apk_command = assembleOssDebug
+make_assemble_android_test_command = assembleOssAndroidTest
+make_test_runner = org.connectbot.debug.tests/org.connectbot.ConnectbotJUnitRunner
+make_espresso_coverage_file_path = app/build/outputs/code_coverage/ossDebugAndroidTest/connected/*/coverage.ec
+make_permissions =
+make_instr_skip_classes = org.connectbot.R
+make_trace_multiple_threads = false
+make_carving_filter_methods = 
+make_instr_filter_packages = 
+make_instr_filter_classes = 
+
