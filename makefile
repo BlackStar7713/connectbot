@@ -106,13 +106,13 @@ define ensure_tracing_apks
 $(info INFO: Ensure tracing APKs are installed [$(TRACING_APKS_INSTALLED)].)
 $(eval IS_RUNNING := $(shell export ABC_CONFIG=$(ABC_CFG) && $(ABC) list-running-emulators | wc -l))
 $(info INFO: Emulator running [$(IS_RUNNING)])
-$(shell if [ "$(IS_RUNNING)" == "0" ]; then \
+$(shell if [ "$(IS_RUNNING)" -eq "0" ]; then \
 	(>&2 echo "No Emulator is running. Start a fresh one"); \
 	export ABC_CONFIG=$(ABC_CFG) && $(ABC) start-clean-emulator; \
 fi)
 $(if $(filter $(IS_RUNNING),0),$(eval TRACING_APKS_INSTALLED := 0),)
 $(if $(filter $(IS_RUNNING),1),$(if $(filter $(TRACING_APKS_INSTALLED),0), $(call remove-apk-and-instrumented-tests),),)
-$(shell if [ "$(TRACING_APKS_INSTALLED)" == "0" ]; then \
+$(shell if [ "$(TRACING_APKS_INSTALLED)" -eq "0" ]; then \
 	(>&2 echo "Installing instrumented apk"); \
 	export ABC_CONFIG=$(ABC_CFG) && $(ABC) install-apk app-instrumented.apk; \
 	(>&2 echo "Installing test apk") ;\
@@ -129,13 +129,13 @@ define ensure_coverage_apks
 $(info INFO: Ensure coverage APKs are installed [$(COVERAGE_APKS_INSTALLED)].)
 $(eval IS_RUNNING := $(shell export ABC_CONFIG=$(ABC_CFG) && $(ABC) list-running-emulators | wc -l))
 $(info INFO: Emulator running [$(IS_RUNNING)])
-$(shell if [ "$(IS_RUNNING)" == "0" ]; then \
+$(shell if [ "$(IS_RUNNING)" -eq "0" ]; then \
 	(>&2 echo "No Emulator is running. Start a fresh one"); \
 	export ABC_CONFIG=$(ABC_CFG) && $(ABC) start-clean-emulator; \
 fi)
 $(if $(filter $(IS_RUNNING),0),$(eval COVERAGE_APKS_INSTALLED := 0),)
 $(if $(filter $(IS_RUNNING),1),$(if $(filter $(COVERAGE_APKS_INSTALLED),0), $(call remove-apk-and-instrumented-tests),),)
-$(shell if [ "$(COVERAGE_APKS_INSTALLED)" == "0" ]; then \
+$(shell if [ "$(COVERAGE_APKS_INSTALLED)" -eq "0" ]; then \
 	(>&2 echo "Installing coverage apk"); \
 	export ABC_CONFIG=$(ABC_CFG) && $(ABC) install-apk app-original-for-coverage.apk; \
 	(>&2 echo "Installing test coverage apk") ;\
@@ -221,7 +221,10 @@ app-instrumented.apk : app-original.apk
 	export INSTRUMENTATION_OPTS=$(INSTRUMENTATION_OPTS) && \
 	INSTRUMENTED_APK=`$(ABC) instrument-apk app-original.apk` && \
 	$(ABC) instrument-apk app-original.apk && \
-	mv -v $${INSTRUMENTED_APK} app-instrumented.apk
+	mv -v $${INSTRUMENTED_APK} app-instrumented-unaligned.apk && \
+	/scratch/berreiter/Android/Sdk/build-tools/30.0.3/zipalign -f -p 4 app-instrumented-unaligned.apk app-instrumented-unsigned.apk && \
+	$(ABC) sign-apk app-instrumented-unsigned.apk && \
+	mv -v app-instrumented-unsigned.apk app-instrumented.apk
 
 app-androidTest.apk :
 	@export ABC_CONFIG=$(ABC_CFG) && \
@@ -253,7 +256,7 @@ $(ESPRESSO_TESTS) : app-instrumented.apk app-androidTest.apk
 	$(eval TEST_NAME := $(shell echo "$(@)" | sed -e 's|__|\\\#|g' -e 's|.testlog||'))
 	@echo "Tracing test $(TEST_NAME)"
 #	Log directly to the expected file
-	$(ADB) shell am instrument -w -e class $(TEST_NAME) org.connectbot.debug.tests/org.connectbot.ConnectbotJUnitRunner 2>&1 | tee $(@)
+	$(ADB) shell am instrument -w -e class $(TEST_NAME) org.connectbot.tests/org.connectbot.ConnectbotJUnitRunner 2>&1 | tee $(@)
 #	Copy the traces if the previous command succeded
 	@export ABC_CONFIG=$(ABC_CFG) && $(ABC) copy-traces org.connectbot.debug ./traces/$(TEST_NAME) force-clean
 
@@ -347,7 +350,7 @@ coverage-espresso-tests : espresso-tests-coverage/html/index.html
 espresso-tests-coverage/html/index.html : app-original-for-coverage.apk app-androidTest-for-coverage.apk
 # Ensure the right apk are installed and optionally start the emulator. Clean up the data if necessary.
 	$(call ensure_coverage_apks)
-	$(GW) -PjacocoEnabled=true -PcarvedTests=false clean jacocoGUITestCoverage 2>&1 </dev/null | tee espresso-tests-coverage.log
+	$(GW) --info -PjacocoEnabled=true -PcarvedTests=false clean jacocoGUITestCoverage 2>&1 </dev/null | tee espresso-tests-coverage.log
 	$(RM) -r espresso-tests-coverage
 	mv -v app/build/reports/jacoco/jacocoGUITestCoverage espresso-tests-coverage || echo "(Error: espresso-tests-coverage not found)"
 # This might not even be necessary
@@ -391,7 +394,7 @@ all-carved-tests-coverage/html/index.html : carved-tests.log
 carved-tests.log : .carved-all
 	$(RM) -r app/src/carvedTest
 	cp -r app/src/allCarvedTest app/src/carvedTest
-	$(GW) -PjacocoEnabled=true -PcarvedTests=true clean jacocoUnitTestCoverage 2>&1 </dev/null | tee carved-tests.log
+	$(GW) -i -PjacocoEnabled=true -PcarvedTests=true clean jacocoUnitTestCoverage 2>&1 </dev/null | tee carved-tests.log
 	$(RM) -r all-carved-tests-coverage
 	mv -v build/carvedTest/coverage all-carved-tests-coverage || echo "(Error: all-carved-tests-coverage not found)"
 
